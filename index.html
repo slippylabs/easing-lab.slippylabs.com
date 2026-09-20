@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Easing &amp; Tween Lab // easing-lab.slippylabs.com</title>
+<meta name="description" content="Design motion curves — a draggable cubic-bezier editor, the 31 classic easings and a real spring model — then export them as JS, GLSL, C#, GDScript or CSS. Runs entirely in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://easing-lab.slippylabs.com/">
+<meta property="og:title" content="Easing &amp; Tween Lab // easing-lab.slippylabs.com">
+<meta property="og:description" content="Design motion curves — a draggable cubic-bezier editor, the 31 classic easings and a real spring model — then export them as JS, GLSL, C#, GDScript or CSS. Runs entirely in your browser.">
+<meta property="og:image" content="https://easing-lab.slippylabs.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Easing &amp; Tween Lab // easing-lab.slippylabs.com">
+<meta name="twitter:description" content="Design motion curves — a draggable cubic-bezier editor, the 31 classic easings and a real spring model — then export them as JS, GLSL, C#, GDScript or CSS. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://easing-lab.slippylabs.com/og-image.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2234%22%20r%3D%2222%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2244%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3C%2Fsvg%3E">
+<meta name="theme-color" content="#050b10">
+<link rel="stylesheet" href="style.css?v=1">
+<script>/* perf-lite: drop blend/blur effects on low-power devices. ?fx=lite or ?fx=full to override (persisted). */
+(function(){try{var k="slippy-fx",m=location.search.match(/[?&]fx=(lite|full)/),v=m?m[1]:localStorage.getItem(k);if(m)localStorage.setItem(k,v);if(v==="lite"||(v!=="full"&&(navigator.hardwareConcurrency||8)<=2))document.documentElement.classList.add("perf-lite");}catch(e){}})();</script>
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="scanlines"></div>
+
+<main class="page-wrap">
+  <div class="hud-panel wide">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+
+    <div class="callsign-row">
+      <div class="toad-avatar-wrap">
+        <svg class="toad-avatar" width="46" height="46" viewBox="0 0 64 64">
+          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
+          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
+          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
+          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
+          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+        <div class="lock-reticle"></div>
+      </div>
+      <span class="callsign">Workshop Division // Tool</span>
+      <div class="nav-links">
+        <a href="https://projects.slippylabs.com/" class="logout-link">← Archive</a>
+      </div>
+    </div>
+
+
+    <h1>EASING &amp; TWEEN LAB</h1>
+    <p class="subtitle">Nothing in a game moves at a constant speed. A curve decides how a thing gets from here to there, and the difference between a menu that feels cheap and one that feels expensive is usually four numbers.</p>
+
+    <div class="filter-bar" id="mode-bar">
+      <button class="hud-tab active" data-mode="bezier">Cubic Bezier</button>
+      <button class="hud-tab" data-mode="preset">Classic Easings</button>
+      <button class="hud-tab" data-mode="spring">Spring</button>
+    </div>
+
+    <div class="ez-grid">
+      <div class="ez-plot-wrap">
+        <canvas id="curve" width="420" height="420"></canvas>
+        <p class="tool-note" id="plot-hint">Drag either handle. The dashed box is 0&ndash;1; the curve is allowed to leave it.</p>
+      </div>
+
+      <div class="ez-controls">
+        <div id="bezier-panel">
+          <div class="tool-field-row">
+            <label class="tool-field-label" for="bez-preset">Start from</label>
+            <select class="tool-select" id="bez-preset"></select>
+          </div>
+          <div class="ez-num-grid">
+            <div class="tool-field-row">
+              <label class="tool-field-label" for="x1">x1</label>
+              <input class="tool-number-input" id="x1" type="number" value="0.25" min="0" max="1" step="0.01">
+            </div>
+            <div class="tool-field-row">
+              <label class="tool-field-label" for="y1">y1</label>
+              <input class="tool-number-input" id="y1" type="number" value="0.1" step="0.01">
+            </div>
+            <div class="tool-field-row">
+              <label class="tool-field-label" for="x2">x2</label>
+              <input class="tool-number-input" id="x2" type="number" value="0.25" min="0" max="1" step="0.01">
+            </div>
+            <div class="tool-field-row">
+              <label class="tool-field-label" for="y2">y2</label>
+              <input class="tool-number-input" id="y2" type="number" value="1" step="0.01">
+            </div>
+          </div>
+          <p class="tool-note">x stays inside 0&ndash;1 because the curve has to be a function of time. y may overshoot &mdash; that is where the life is.</p>
+        </div>
+
+        <div id="preset-panel" class="hidden">
+          <div class="tool-field-row">
+            <label class="tool-field-label" for="easing-select">Easing</label>
+            <select class="tool-select" id="easing-select"></select>
+          </div>
+          <p class="tool-note" id="easing-note"></p>
+        </div>
+
+        <div id="spring-panel" class="hidden">
+          <div class="tool-field-row">
+            <label class="tool-field-label" for="stiff-slider">Stiffness &mdash; <span id="stiff-value">180</span></label>
+            <div class="tool-slider-row">
+              <input type="range" id="stiff-slider" min="5" max="600" step="1" value="180">
+            </div>
+          </div>
+          <div class="tool-field-row">
+            <label class="tool-field-label" for="damp-slider">Damping &mdash; <span id="damp-value">18</span></label>
+            <div class="tool-slider-row">
+              <input type="range" id="damp-slider" min="0" max="120" step="0.5" value="18">
+            </div>
+          </div>
+          <div class="tool-field-row">
+            <label class="tool-field-label" for="mass-slider">Mass &mdash; <span id="mass-value">1.0</span></label>
+            <div class="tool-slider-row">
+              <input type="range" id="mass-slider" min="0.2" max="8" step="0.1" value="1">
+            </div>
+          </div>
+          <div class="tool-field-row">
+            <label class="tool-field-label" for="vel-slider">Initial velocity &mdash; <span id="vel-value">0.0</span></label>
+            <div class="tool-slider-row">
+              <input type="range" id="vel-slider" min="-20" max="20" step="0.5" value="0">
+            </div>
+          </div>
+          <p class="tool-note" id="spring-note"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="net-grid" id="stat-row">
+      <div class="net-tile"><div class="net-tile-label">Duration</div><div class="net-tile-value" id="stat-dur">1.000 s</div></div>
+      <div class="net-tile"><div class="net-tile-label">Peak value</div><div class="net-tile-value" id="stat-peak">1.000</div></div>
+      <div class="net-tile"><div class="net-tile-label">Overshoot</div><div class="net-tile-value" id="stat-over">none</div></div>
+      <div class="net-tile"><div class="net-tile-label">Max speed</div><div class="net-tile-value" id="stat-speed">0.00 /s</div></div>
+    </div>
+
+    <h2 class="ez-h2">Motion preview</h2>
+    <p class="tool-note">The same curve applied four ways. Your eye judges a curve here, not on the graph.</p>
+    <div class="ez-preview" id="preview-wrap">
+      <div class="ez-track"><span class="ez-track-label">Position</span><div class="ez-runner" id="run-pos"></div></div>
+      <div class="ez-track"><span class="ez-track-label">Scale</span><div class="ez-runner ez-runner-scale" id="run-scale"></div></div>
+      <div class="ez-track"><span class="ez-track-label">Rotate</span><div class="ez-runner ez-runner-rot" id="run-rot"></div></div>
+      <div class="ez-track"><span class="ez-track-label">Fade</span><div class="ez-runner ez-runner-fade" id="run-fade"></div></div>
+    </div>
+    <div class="tool-controls">
+      <button class="tool-btn" id="play-btn">Play</button>
+      <button class="tool-btn ghost" id="loop-btn" aria-pressed="true">Loop: on</button>
+      <div class="tool-field-row ez-inline-field">
+        <label class="tool-field-label" for="dur-input">Duration (s)</label>
+        <input class="tool-number-input" id="dur-input" type="number" value="1" min="0.05" max="10" step="0.05">
+      </div>
+    </div>
+
+    <h2 class="ez-h2">Export</h2>
+    <div class="tool-field-row">
+      <label class="tool-field-label" for="lang-select">Language</label>
+      <select class="tool-select" id="lang-select">
+        <option value="js">JavaScript</option>
+        <option value="glsl">GLSL</option>
+        <option value="csharp">C# / Unity</option>
+        <option value="gdscript">GDScript / Godot</option>
+        <option value="css">CSS</option>
+      </select>
+    </div>
+    <pre class="tool-output ez-code" id="code-out"></pre>
+    <div class="tool-controls">
+      <button class="tool-btn" id="copy-btn">Copy Code</button>
+      <button class="tool-btn ghost" id="table-btn">Copy 64-sample table</button>
+    </div>
+    <div class="copy-toast" id="toast">Copied</div>
+    <div class="comm-window">
+      <div class="comm-portrait">
+        <svg width="36" height="36" viewBox="0 0 64 64">
+          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
+          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
+          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
+          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
+          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="comm-body">
+        <div class="comm-label"><span class="dot"></span> Incoming Transmission &mdash; Slippy</div>
+        <p>&quot;Linear is a decision too. Usually the wrong one.&quot;</p>
+      </div>
+    </div>
+
+    <a href="https://projects.slippylabs.com/" class="hud-btn">← Back to Archive</a>
+  </div>
+</main>
+
+
+<script>
+/* ---- Easing curves ----------------------------------------------------------
+   Three families of curve, one interface: every one of them is a function of a
+   normalised time t in [0,1] returning a progress value that is 0 at t=0 and 1
+   at t=1 (springs get there by settling, not by arriving).
+
+   The cubic bezier is the awkward one. A CSS/After-Effects easing curve is a
+   bezier in (x,y) where x is time -- so to evaluate it you must first solve for
+   the parameter s such that X(s) = t, then read Y(s). That solve is the whole
+   difficulty, and it is why this file has a root finder in it. */
+
+const NEWTON_ITERATIONS = 8;
+const NEWTON_MIN_SLOPE = 1e-4;
+const SUBDIVISION_EPSILON = 1e-12;
+const SUBDIVISION_MAX = 80;
+
+function bezierComponent(a1, a2, s) {
+  /* Bernstein form with P0 = 0 and P3 = 1, expanded to Horner so it is three
+     multiplies instead of eight. */
+  const c = 3 * a1;
+  const b = 3 * (a2 - a1) - c;
+  const a = 1 - c - b;
+  return ((a * s + b) * s + c) * s;
+}
+
+function bezierSlope(a1, a2, s) {
+  const c = 3 * a1;
+  const b = 3 * (a2 - a1) - c;
+  const a = 1 - c - b;
+  return (3 * a * s + 2 * b) * s + c;
+}
+
+/* Solve X(s) = x. Newton is fast but can wander off a flat spot, so it is only
+   trusted while the slope is meaningful; otherwise fall back to bisection,
+   which cannot fail here because X is monotone for x1,x2 in [0,1]. */
+function bezierSolveS(x1, x2, x) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  let s = x;
+  for (let i = 0; i < NEWTON_ITERATIONS; i++) {
+    const slope = bezierSlope(x1, x2, s);
+    if (Math.abs(slope) < NEWTON_MIN_SLOPE) break;
+    const err = bezierComponent(x1, x2, s) - x;
+    if (Math.abs(err) < SUBDIVISION_EPSILON) return s;
+    const next = s - err / slope;
+    if (!(next >= 0 && next <= 1)) break;
+    s = next;
+  }
+  let lo = 0;
+  let hi = 1;
+  s = x;
+  for (let i = 0; i < SUBDIVISION_MAX; i++) {
+    const v = bezierComponent(x1, x2, s);
+    if (Math.abs(v - x) < SUBDIVISION_EPSILON) break;
+    if (v < x) lo = s; else hi = s;
+    s = (lo + hi) / 2;
+  }
+  return s;
+}
+
+function cubicBezier(x1, y1, x2, y2) {
+  const cx1 = Math.min(1, Math.max(0, x1));
+  const cx2 = Math.min(1, Math.max(0, x2));
+  /* The identity curve is exactly linear; say so rather than running a solver
+     that would return the same answer to 12 places. */
+  if (cx1 === y1 && cx2 === y2) return (t) => t;
+  return function ease(t) {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    return bezierComponent(y1, y2, bezierSolveS(cx1, cx2, t));
+  };
+}
+
+/* ---- The classic set -------------------------------------------------------
+   Robert Penner's equations, written as normalised in/out/inOut triples. The
+   "out" of a family is its "in" mirrored through the point (0.5, 0.5), and the
+   "inOut" is the two halves stitched -- so each family is written once and the
+   other two are derived. That is not just brevity: a hand-written "out" is the
+   classic place for a sign error nobody notices. */
+
+const C1 = 1.70158;          /* back overshoot, from the original source */
+const C2 = C1 * 1.525;       /* the inOut variant needs a larger kick */
+const C3 = C1 + 1;
+const C4 = (2 * Math.PI) / 3;   /* elastic period, in and out */
+const C5 = (2 * Math.PI) / 4.5; /* elastic period, inOut */
+const BOUNCE_N = 7.5625;
+const BOUNCE_D = 2.75;
+
+function bounceOut(t) {
+  if (t < 1 / BOUNCE_D) return BOUNCE_N * t * t;
+  if (t < 2 / BOUNCE_D) { t -= 1.5 / BOUNCE_D; return BOUNCE_N * t * t + 0.75; }
+  if (t < 2.5 / BOUNCE_D) { t -= 2.25 / BOUNCE_D; return BOUNCE_N * t * t + 0.9375; }
+  t -= 2.625 / BOUNCE_D;
+  return BOUNCE_N * t * t + 0.984375;
+}
+
+const FAMILIES = [
+  { name: 'Quad', key: 'Quad', inFn: (t) => t * t, bez: [0.11, 0, 0.5, 0] },
+  { name: 'Cubic', key: 'Cubic', inFn: (t) => t * t * t, bez: [0.32, 0, 0.67, 0] },
+  { name: 'Quart', key: 'Quart', inFn: (t) => t * t * t * t, bez: [0.5, 0, 0.75, 0] },
+  { name: 'Quint', key: 'Quint', inFn: (t) => t * t * t * t * t, bez: [0.64, 0, 0.78, 0] },
+  { name: 'Sine', key: 'Sine', inFn: (t) => 1 - Math.cos((t * Math.PI) / 2), bez: [0.12, 0, 0.39, 0] },
+  { name: 'Expo', key: 'Expo', inFn: (t) => (t === 0 ? 0 : Math.pow(2, 10 * t - 10)), bez: [0.7, 0, 0.84, 0] },
+  { name: 'Circ', key: 'Circ', inFn: (t) => 1 - Math.sqrt(1 - t * t), bez: [0.55, 0, 1, 0.45] },
+  { name: 'Back', key: 'Back', inFn: (t) => C3 * t * t * t - C1 * t * t, bez: [0.36, 0, 0.66, -0.56] },
+  {
+    name: 'Elastic',
+    key: 'Elastic',
+    inFn: (t) => (t === 0 ? 0 : t === 1 ? 1 : -Math.pow(2, 10 * t - 10) * Math.sin((t * 10 - 10.75) * C4)),
+    bez: null,
+  },
+  { name: 'Bounce', key: 'Bounce', inFn: (t) => 1 - bounceOut(1 - t), bez: null },
+];
+
+/* Mirror an "in" curve into its "out". */
+function mirror(fn) {
+  return (t) => 1 - fn(1 - t);
+}
+
+/* Stitch two halves. Elastic and bounce have their own published inOut forms
+   because the naive stitch changes their period; they are given explicitly. */
+function stitch(inFn) {
+  const outFn = mirror(inFn);
+  return (t) => (t < 0.5 ? inFn(t * 2) / 2 : 0.5 + outFn(t * 2 - 1) / 2);
+}
+
+function buildEasings() {
+  const out = new Map();
+  out.set('linear', { label: 'linear', fn: (t) => t, family: 'Linear', bez: [0, 0, 1, 1] });
+  for (const fam of FAMILIES) {
+    const inFn = fam.inFn;
+    out.set(`easeIn${fam.key}`, { label: `easeIn${fam.key}`, fn: inFn, family: fam.name, bez: fam.bez });
+    out.set(`easeOut${fam.key}`, {
+      label: `easeOut${fam.key}`,
+      fn: mirror(inFn),
+      family: fam.name,
+      bez: fam.bez ? [1 - fam.bez[2], 1 - fam.bez[3], 1 - fam.bez[0], 1 - fam.bez[1]] : null,
+    });
+    out.set(`easeInOut${fam.key}`, { label: `easeInOut${fam.key}`, fn: stitch(inFn), family: fam.name, bez: null });
+  }
+  /* The two that do not stitch cleanly. */
+  out.get('easeInOutBack').fn = (t) =>
+    t < 0.5
+      ? (Math.pow(2 * t, 2) * ((C2 + 1) * 2 * t - C2)) / 2
+      : (Math.pow(2 * t - 2, 2) * ((C2 + 1) * (t * 2 - 2) + C2) + 2) / 2;
+  out.get('easeInOutElastic').fn = (t) =>
+    t === 0 ? 0 : t === 1 ? 1
+      : t < 0.5
+        ? -(Math.pow(2, 20 * t - 10) * Math.sin((20 * t - 11.125) * C5)) / 2
+        : (Math.pow(2, -20 * t + 10) * Math.sin((20 * t - 11.125) * C5)) / 2 + 1;
+  return out;
+}
+
+const EASINGS = buildEasings();
+
+/* ---- Springs ----------------------------------------------------------------
+   m x'' + c x' + k x = 0, measured as displacement from the target, so the
+   curve this page draws is 1 + x(t) with x(0) = -1. The closed form is used
+   rather than an integrator: an integrator's answer depends on its timestep,
+   and this page's whole job is to hand you numbers you can trust.
+
+   Three regimes, split on the damping ratio, and the critical case is a genuine
+   third formula rather than a limit -- at zeta exactly 1 the two roots coincide
+   and the underdamped form divides by a zero frequency. */
+
+function springSolution(stiffness, damping, mass, initialVelocity) {
+  const k = Math.max(1e-9, stiffness);
+  const m = Math.max(1e-9, mass);
+  const c = Math.max(0, damping);
+  const w0 = Math.sqrt(k / m);
+  const zeta = c / (2 * Math.sqrt(k * m));
+  const x0 = -1;
+  const v0 = initialVelocity;
+  let fn;
+  let regime;
+  if (zeta < 1 - 1e-9) {
+    regime = 'under';
+    const wd = w0 * Math.sqrt(1 - zeta * zeta);
+    const A = x0;
+    const B = (v0 + zeta * w0 * x0) / wd;
+    fn = (t) => 1 + Math.exp(-zeta * w0 * t) * (A * Math.cos(wd * t) + B * Math.sin(wd * t));
+  } else if (zeta <= 1 + 1e-9) {
+    regime = 'critical';
+    const A = x0;
+    const B = v0 + w0 * x0;
+    fn = (t) => 1 + (A + B * t) * Math.exp(-w0 * t);
+  } else {
+    regime = 'over';
+    const root = w0 * Math.sqrt(zeta * zeta - 1);
+    const r1 = -zeta * w0 + root;
+    const r2 = -zeta * w0 - root;
+    const A = (v0 - x0 * r2) / (r1 - r2);
+    const B = x0 - A;
+    fn = (t) => 1 + A * Math.exp(r1 * t) + B * Math.exp(r2 * t);
+  }
+  return { fn, w0, zeta, regime };
+}
+
+/* When has it stopped? Not "when the formula reaches 1" -- it never does. Walk
+   forward and keep the last time it was still outside the tolerance band.
+
+   With zero damping it never stops at all, and saying "20 seconds" would be a
+   lie the export would then bake into someone's game. So this reports whether
+   it settled, and an unsettled spring is shown as a few periods of the thing
+   it actually is: a permanent oscillation. */
+function springDuration(sol, tolerance = 0.001, limit = 20) {
+  const step = 1 / 600;
+  let last = 0;
+  for (let t = 0; t <= limit; t += step) {
+    if (Math.abs(sol.fn(t) - 1) > tolerance) last = t;
+  }
+  const settled = last + step < limit;
+  if (settled) return { duration: last + step, settled: true };
+  /* Not settling: show three periods if there is a period to show, else the cap. */
+  const wd = sol.zeta < 1 ? sol.w0 * Math.sqrt(1 - sol.zeta * sol.zeta) : 0;
+  const shown = wd > 0 ? Math.min(limit, (3 * 2 * Math.PI) / wd) : limit;
+  return { duration: shown, settled: false };
+}
+
+/* ---- Measuring a curve ------------------------------------------------------ */
+
+function sampleCurve(fn, count = 128) {
+  const pts = new Array(count + 1);
+  for (let i = 0; i <= count; i++) {
+    const t = i / count;
+    pts[i] = { t, v: fn(t) };
+  }
+  return pts;
+}
+
+function curveStats(fn, count = 512) {
+  let peak = -Infinity;
+  let trough = Infinity;
+  let maxSpeed = 0;
+  let prev = fn(0);
+  for (let i = 0; i <= count; i++) {
+    const t = i / count;
+    const v = fn(t);
+    if (v > peak) peak = v;
+    if (v < trough) trough = v;
+    if (i > 0) {
+      const speed = Math.abs(v - prev) * count;
+      if (speed > maxSpeed) maxSpeed = speed;
+    }
+    prev = v;
+  }
+  return { peak, trough, maxSpeed, overshoot: Math.max(0, peak - 1), undershoot: Math.max(0, -trough) };
+}
+
+/* ---- Export -----------------------------------------------------------------
+   Every generator emits the same maths, not a lookup table, except CSS -- which
+   has no way to express a spring and gets a sampled linear() instead. */
+
+function fmt(n, places = 4) {
+  if (!isFinite(n)) return '0.0';
+  const s = n.toFixed(places).replace(/0+$/, '').replace(/\.$/, '.0');
+  return s === '-0.0' ? '0.0' : s;
+}
+
+const BEZIER_BODY = {
+  js: (name, p) => `// ${name}: cubic-bezier(${p.map((n) => fmt(n)).join(', ')})
+// Solve X(s) = t for s, then read Y(s). Newton with a bisection fallback.
+function ${name}(t) {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  const cx = 3 * ${fmt(p[0])}, bx = 3 * (${fmt(p[2])} - ${fmt(p[0])}) - cx, ax = 1 - cx - bx;
+  const cy = 3 * ${fmt(p[1])}, by = 3 * (${fmt(p[3])} - ${fmt(p[1])}) - cy, ay = 1 - cy - by;
+  let s = t;
+  for (let i = 0; i < 8; i++) {
+    const x = ((ax * s + bx) * s + cx) * s - t;
+    const d = (3 * ax * s + 2 * bx) * s + cx;
+    if (Math.abs(d) < 1e-4) break;
+    const next = s - x / d;
+    if (!(next >= 0 && next <= 1)) break;
+    s = next;
+  }
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 40; i++) {
+    const x = ((ax * s + bx) * s + cx) * s;
+    if (Math.abs(x - t) < 1e-7) break;
+    if (x < t) lo = s; else hi = s;
+    s = (lo + hi) / 2;
+  }
+  return ((ay * s + by) * s + cy) * s;
+}`,
+  glsl: (name, p) => `// ${name}: cubic-bezier(${p.map((n) => fmt(n)).join(', ')})
+// Fixed iteration count -- a GPU cannot afford a data-dependent loop here.
+float ${name}(float t) {
+  if (t <= 0.0) return 0.0;
+  if (t >= 1.0) return 1.0;
+  float cx = 3.0 * ${fmt(p[0])}, bx = 3.0 * (${fmt(p[2])} - ${fmt(p[0])}) - cx, ax = 1.0 - cx - bx;
+  float cy = 3.0 * ${fmt(p[1])}, by = 3.0 * (${fmt(p[3])} - ${fmt(p[1])}) - cy, ay = 1.0 - cy - by;
+  float s = t;
+  for (int i = 0; i < 12; i++) {
+    float x = ((ax * s + bx) * s + cx) * s - t;
+    float d = (3.0 * ax * s + 2.0 * bx) * s + cx;
+    s = clamp(s - x / max(d, 1e-4), 0.0, 1.0);
+  }
+  return ((ay * s + by) * s + cy) * s;
+}`,
+  csharp: (name, p) => `// ${name}: cubic-bezier(${p.map((n) => fmt(n)).join(', ')})
+public static float ${name[0].toUpperCase()}${name.slice(1)}(float t)
+{
+    if (t <= 0f) return 0f;
+    if (t >= 1f) return 1f;
+    float cx = 3f * ${fmt(p[0])}f, bx = 3f * (${fmt(p[2])}f - ${fmt(p[0])}f) - cx, ax = 1f - cx - bx;
+    float cy = 3f * ${fmt(p[1])}f, by = 3f * (${fmt(p[3])}f - ${fmt(p[1])}f) - cy, ay = 1f - cy - by;
+    float s = t;
+    for (int i = 0; i < 8; i++)
+    {
+        float x = ((ax * s + bx) * s + cx) * s - t;
+        float d = (3f * ax * s + 2f * bx) * s + cx;
+        if (Mathf.Abs(d) < 1e-4f) break;
+        float next = s - x / d;
+        if (next < 0f || next > 1f) break;
+        s = next;
+    }
+    float lo = 0f, hi = 1f;
+    for (int i = 0; i < 40; i++)
+    {
+        float x = ((ax * s + bx) * s + cx) * s;
+        if (Mathf.Abs(x - t) < 1e-7f) break;
+        if (x < t) lo = s; else hi = s;
+        s = (lo + hi) * 0.5f;
+    }
+    return ((ay * s + by) * s + cy) * s;
+}`,
+  gdscript: (name, p) => `# ${name}: cubic-bezier(${p.map((n) => fmt(n)).join(', ')})
+static func ${name}(t: float) -> float:
+\tif t <= 0.0:
+\t\treturn 0.0
+\tif t >= 1.0:
+\t\treturn 1.0
+\tvar cx := 3.0 * ${fmt(p[0])}
+\tvar bx := 3.0 * (${fmt(p[2])} - ${fmt(p[0])}) - cx
+\tvar ax := 1.0 - cx - bx
+\tvar cy := 3.0 * ${fmt(p[1])}
+\tvar by := 3.0 * (${fmt(p[3])} - ${fmt(p[1])}) - cy
+\tvar ay := 1.0 - cy - by
+\tvar s := t
+\tfor i in 8:
+\t\tvar x := ((ax * s + bx) * s + cx) * s - t
+\t\tvar d := (3.0 * ax * s + 2.0 * bx) * s + cx
+\t\tif abs(d) < 1e-4:
+\t\t\tbreak
+\t\tvar nxt := s - x / d
+\t\tif nxt < 0.0 or nxt > 1.0:
+\t\t\tbreak
+\t\ts = nxt
+\tvar lo := 0.0
+\tvar hi := 1.0
+\tfor i in 40:
+\t\tvar x := ((ax * s + bx) * s + cx) * s
+\t\tif abs(x - t) < 1e-7:
+\t\t\tbreak
+\t\tif x < t:
+\t\t\tlo = s
+\t\telse:
+\t\t\thi = s
+\t\ts = (lo + hi) * 0.5
+\treturn ((ay * s + by) * s + cy) * s`,
+};
+
+/* CSS linear() -- the one export that is a table, because CSS has no loops.
+   Points are only emitted where the curve bends: a straight run of samples is
+   three numbers wasted. */
+function cssLinear(fn, samples = 40, tolerance = 0.0015) {
+  const pts = [];
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    pts.push({ t, v: fn(t) });
+  }
+  const keep = [pts[0]];
+  for (let i = 1; i < pts.length - 1; i++) {
+    const prev = keep[keep.length - 1];
+    const next = pts[i + 1];
+    const span = next.t - prev.t;
+    const lerp = span === 0 ? prev.v : prev.v + ((pts[i].t - prev.t) / span) * (next.v - prev.v);
+    if (Math.abs(lerp - pts[i].v) > tolerance) keep.push(pts[i]);
+  }
+  keep.push(pts[pts.length - 1]);
+  const body = keep
+    .map((p, i) => (i === 0 ? fmt(p.v, 4) : `${fmt(p.v, 4)} ${(p.t * 100).toFixed(1)}%`))
+    .join(', ');
+  return `linear(${body})`;
+}
+
+function springCode(lang, name, params, duration) {
+  const { stiffness, damping, mass, velocity } = params;
+  const sol = springSolution(stiffness, damping, mass, velocity);
+  const common = `stiffness ${fmt(stiffness, 2)}, damping ${fmt(damping, 2)}, mass ${fmt(mass, 2)}, v0 ${fmt(velocity, 2)}
+// omega0 ${fmt(sol.w0, 4)}, zeta ${fmt(sol.zeta, 4)} (${sol.regime}damped)
+// ${springDuration(sol).settled ? `settles in ${fmt(duration, 3)}s` : 'never settles -- damping is zero, it oscillates forever'}`;
+  if (lang === 'css') {
+    return `/* A spring is not expressible in CSS. This is it sampled. */\n.thing {\n  transition: transform ${fmt(duration, 3)}s ${cssLinear(sol.fn, 60)};\n}`;
+  }
+  if (lang === 'js') {
+    return `// ${name}: ${common}
+// t is seconds, not normalised -- a spring has its own duration.
+function ${name}(t) {
+  const w0 = ${fmt(sol.w0, 6)}, zeta = ${fmt(sol.zeta, 6)}, v0 = ${fmt(velocity, 6)};
+${springBodyJS(sol, velocity)}
+}`;
+  }
+  if (lang === 'glsl') {
+    return `// ${name}: ${common}
+float ${name}(float t) {
+  float w0 = ${fmt(sol.w0, 6)}, zeta = ${fmt(sol.zeta, 6)};
+${springBodyGLSL(sol, velocity)}
+}`;
+  }
+  if (lang === 'csharp') {
+    return `// ${name}: ${common}
+public static float ${name[0].toUpperCase()}${name.slice(1)}(float t)
+{
+    float w0 = ${fmt(sol.w0, 6)}f, zeta = ${fmt(sol.zeta, 6)}f;
+${springBodyCS(sol, velocity)}
+}`;
+  }
+  return `# ${name}: ${common.replace(/^\/\//gm, '#')}
+static func ${name}(t: float) -> float:
+${springBodyGD(sol, velocity)}`;
+}
+
+function springBodyJS(sol, v0) {
+  if (sol.regime === 'under') {
+    return `  const wd = w0 * Math.sqrt(1 - zeta * zeta);
+  const B = (v0 - zeta * w0) / wd;
+  return 1 + Math.exp(-zeta * w0 * t) * (-Math.cos(wd * t) + B * Math.sin(wd * t));`;
+  }
+  if (sol.regime === 'critical') {
+    return `  const B = v0 - w0;
+  return 1 + (-1 + B * t) * Math.exp(-w0 * t);`;
+  }
+  return `  const root = w0 * Math.sqrt(zeta * zeta - 1);
+  const r1 = -zeta * w0 + root, r2 = -zeta * w0 - root;
+  const A = (v0 + r2) / (r1 - r2), B = -1 - A;
+  return 1 + A * Math.exp(r1 * t) + B * Math.exp(r2 * t);`;
+}
+
+function springBodyGLSL(sol) {
+  if (sol.regime === 'under') {
+    return `  float wd = w0 * sqrt(1.0 - zeta * zeta);
+  float B = (${'v0'} - zeta * w0) / wd;
+  return 1.0 + exp(-zeta * w0 * t) * (-cos(wd * t) + B * sin(wd * t));`.replace('v0', '0.0');
+  }
+  if (sol.regime === 'critical') {
+    return `  return 1.0 + (-1.0 + (0.0 - w0) * t) * exp(-w0 * t);`;
+  }
+  return `  float root = w0 * sqrt(zeta * zeta - 1.0);
+  float r1 = -zeta * w0 + root, r2 = -zeta * w0 - root;
+  float A = (0.0 + r2) / (r1 - r2), B = -1.0 - A;
+  return 1.0 + A * exp(r1 * t) + B * exp(r2 * t);`;
+}
+
+function springBodyCS(sol) {
+  if (sol.regime === 'under') {
+    return `    float wd = w0 * Mathf.Sqrt(1f - zeta * zeta);
+    float B = -zeta * w0 / wd;
+    return 1f + Mathf.Exp(-zeta * w0 * t) * (-Mathf.Cos(wd * t) + B * Mathf.Sin(wd * t));`;
+  }
+  if (sol.regime === 'critical') {
+    return `    return 1f + (-1f - w0 * t) * Mathf.Exp(-w0 * t);`;
+  }
+  return `    float root = w0 * Mathf.Sqrt(zeta * zeta - 1f);
+    float r1 = -zeta * w0 + root, r2 = -zeta * w0 - root;
+    float A = r2 / (r1 - r2), B = -1f - A;
+    return 1f + A * Mathf.Exp(r1 * t) + B * Mathf.Exp(r2 * t);`;
+}
+
+function springBodyGD(sol) {
+  if (sol.regime === 'under') {
+    return `\tvar wd := w0 * sqrt(1.0 - zeta * zeta)\n\tvar B := -zeta * w0 / wd\n\treturn 1.0 + exp(-zeta * w0 * t) * (-cos(wd * t) + B * sin(wd * t))`;
+  }
+  if (sol.regime === 'critical') {
+    return `\treturn 1.0 + (-1.0 - w0 * t) * exp(-w0 * t)`;
+  }
+  return `\tvar root := w0 * sqrt(zeta * zeta - 1.0)\n\tvar r1 := -zeta * w0 + root\n\tvar r2 := -zeta * w0 - root\n\tvar A := r2 / (r1 - r2)\n\tvar B := -1.0 - A\n\treturn 1.0 + A * exp(r1 * t) + B * exp(r2 * t)`;
+}
+
+/* The classic easings export as their own equations, not as a bezier fit --
+   a fit of easeOutBounce is not easeOutBounce. */
+const PRESET_SOURCE = {
+  js: {
+    head: '// Drop-in easing. t is normalised 0..1.',
+    wrap: (name, body) => `function ${name}(t) {\n  ${body}\n}`,
+  },
+};
+
+function presetCode(lang, key) {
+  const entry = EASINGS.get(key);
+  if (!entry) return '';
+  if (lang === 'css') {
+    return entry.bez
+      ? `/* ${key} */\n.thing {\n  transition: transform 0.4s cubic-bezier(${entry.bez.map((n) => fmt(n)).join(', ')});\n}`
+      : `/* ${key} has no exact cubic-bezier. Sampled: */\n.thing {\n  transition: transform 0.4s ${cssLinear(entry.fn, 60)};\n}`;
+  }
+  const src = PRESET_BODIES[key] && PRESET_BODIES[key][lang];
+  if (src) return src;
+  /* Anything without a hand-written body ships as a sampled table, and says so
+     rather than pretending to be the equation. */
+  const samples = sampleCurve(entry.fn, 32).map((p) => fmt(p.v, 5));
+  if (lang === 'glsl') {
+    return `// ${key}, sampled at 33 points (no compact closed form worth inlining).\nconst float ${key}Table[33] = float[33](${samples.join(', ')});\nfloat ${key}(float t) {\n  float f = clamp(t, 0.0, 1.0) * 32.0;\n  int i = int(f);\n  float m = f - float(i);\n  return mix(${key}Table[i], ${key}Table[min(i + 1, 32)], m);\n}`;
+  }
+  if (lang === 'csharp') {
+    return `// ${key}, sampled at 33 points.\nstatic readonly float[] ${key}Table = { ${samples.map((s) => `${s}f`).join(', ')} };\npublic static float ${key[0].toUpperCase()}${key.slice(1)}(float t)\n{\n    float f = Mathf.Clamp01(t) * 32f;\n    int i = Mathf.FloorToInt(f);\n    return Mathf.Lerp(${key}Table[i], ${key}Table[Mathf.Min(i + 1, 32)], f - i);\n}`;
+  }
+  if (lang === 'gdscript') {
+    return `# ${key}, sampled at 33 points.\nconst ${key.toUpperCase()}_TABLE := [${samples.join(', ')}]\nstatic func ${key}(t: float) -> float:\n\tvar f := clamp(t, 0.0, 1.0) * 32.0\n\tvar i := int(f)\n\treturn lerp(${key.toUpperCase()}_TABLE[i], ${key.toUpperCase()}_TABLE[min(i + 1, 32)], f - i)`;
+  }
+  return `// ${key}, sampled at 33 points.\nconst ${key}Table = [${samples.join(', ')}];\nfunction ${key}(t) {\n  const f = Math.min(1, Math.max(0, t)) * 32;\n  const i = Math.floor(f);\n  return ${key}Table[i] + (${key}Table[Math.min(i + 1, 32)] - ${key}Table[i]) * (f - i);\n}`;
+}
+
+/* Hand-written bodies for the families whose equations are short enough to be
+   more useful than a table. Generated for all three directions from one
+   template per family so the "out" cannot drift from the "in". */
+const PRESET_BODIES = (() => {
+  const shapes = {
+    Quad: { js: 't * t', glsl: 't * t', csharp: 't * t', gdscript: 't * t' },
+    Cubic: { js: 't * t * t', glsl: 't * t * t', csharp: 't * t * t', gdscript: 't * t * t' },
+    Quart: { js: 't * t * t * t', glsl: 't * t * t * t', csharp: 't * t * t * t', gdscript: 't * t * t * t' },
+    Quint: { js: 't * t * t * t * t', glsl: 't * t * t * t * t', csharp: 't * t * t * t * t', gdscript: 't * t * t * t * t' },
+    Sine: {
+      js: '1 - Math.cos((t * Math.PI) / 2)',
+      glsl: '1.0 - cos((t * 3.14159265) / 2.0)',
+      csharp: '1f - Mathf.Cos((t * Mathf.PI) / 2f)',
+      gdscript: '1.0 - cos((t * PI) / 2.0)',
+    },
+    Circ: {
+      js: '1 - Math.sqrt(1 - t * t)',
+      glsl: '1.0 - sqrt(1.0 - t * t)',
+      csharp: '1f - Mathf.Sqrt(1f - t * t)',
+      gdscript: '1.0 - sqrt(1.0 - t * t)',
+    },
+    Back: {
+      js: '2.70158 * t * t * t - 1.70158 * t * t',
+      glsl: '2.70158 * t * t * t - 1.70158 * t * t',
+      csharp: '2.70158f * t * t * t - 1.70158f * t * t',
+      gdscript: '2.70158 * t * t * t - 1.70158 * t * t',
+    },
+  };
+  const out = {};
+  const langs = ['js', 'glsl', 'csharp', 'gdscript'];
+  const sig = {
+    js: (name, body) => `function ${name}(t) {\n  return ${body};\n}`,
+    glsl: (name, body) => `float ${name}(float t) {\n  return ${body};\n}`,
+    csharp: (name, body) => `public static float ${name[0].toUpperCase()}${name.slice(1)}(float t)\n{\n    return ${body};\n}`,
+    gdscript: (name, body) => `static func ${name}(t: float) -> float:\n\treturn ${body}`,
+  };
+  for (const [fam, bodies] of Object.entries(shapes)) {
+    for (const lang of langs) {
+      const b = bodies[lang];
+      /* in: f(t).  out: 1 - f(1-t).  inOut: the two halves. */
+      const sub = (expr, arg) => expr.replace(/\bt\b/g, `(${arg})`);
+      const one = lang === 'csharp' ? '1f' : lang === 'glsl' ? '1.0' : lang === 'gdscript' ? '1.0' : '1';
+      const half = lang === 'csharp' ? '0.5f' : lang === 'glsl' ? '0.5' : lang === 'gdscript' ? '0.5' : '0.5';
+      const two = lang === 'csharp' ? '2f' : lang === 'glsl' ? '2.0' : lang === 'gdscript' ? '2.0' : '2';
+      out[`easeIn${fam}`] = out[`easeIn${fam}`] || {};
+      out[`easeOut${fam}`] = out[`easeOut${fam}`] || {};
+      out[`easeInOut${fam}`] = out[`easeInOut${fam}`] || {};
+      out[`easeIn${fam}`][lang] = sig[lang](`easeIn${fam}`, b);
+      out[`easeOut${fam}`][lang] = sig[lang](`easeOut${fam}`, `${one} - (${sub(b, `${one} - t`)})`);
+      const inHalf = sub(b, `t * ${two}`);
+      const outHalf = `${one} - (${sub(b, `${two} - t * ${two}`)})`;
+      if (lang === 'gdscript') {
+        out[`easeInOut${fam}`][lang] =
+          `static func easeInOut${fam}(t: float) -> float:\n\tif t < 0.5:\n\t\treturn (${inHalf}) * 0.5\n\treturn 0.5 + (${outHalf}) * 0.5`;
+      } else if (lang === 'csharp') {
+        out[`easeInOut${fam}`][lang] =
+          `public static float EaseInOut${fam}(float t)\n{\n    if (t < 0.5f) return (${inHalf}) * 0.5f;\n    return 0.5f + (${outHalf}) * 0.5f;\n}`;
+      } else if (lang === 'glsl') {
+        out[`easeInOut${fam}`][lang] =
+          `float easeInOut${fam}(float t) {\n  if (t < 0.5) return (${inHalf}) * 0.5;\n  return 0.5 + (${outHalf}) * 0.5;\n}`;
+      } else {
+        out[`easeInOut${fam}`][lang] =
+          `function easeInOut${fam}(t) {\n  if (t < 0.5) return (${inHalf}) * 0.5;\n  return 0.5 + (${outHalf}) * 0.5;\n}`;
+      }
+      void half;
+    }
+  }
+  return out;
+})();
+
+/* ==== UI ==== */
+
+const $ = (id) => document.getElementById(id);
+const canvas = $('curve');
+const ctx = canvas.getContext('2d');
+
+const BEZ_PRESETS = [
+  { name: 'Custom', p: null },
+  { name: 'ease (CSS default)', p: [0.25, 0.1, 0.25, 1] },
+  { name: 'ease-in', p: [0.42, 0, 1, 1] },
+  { name: 'ease-out', p: [0, 0, 0.58, 1] },
+  { name: 'ease-in-out', p: [0.42, 0, 0.58, 1] },
+  { name: 'Material standard', p: [0.4, 0, 0.2, 1] },
+  { name: 'Material decelerate', p: [0, 0, 0.2, 1] },
+  { name: 'Snappy UI', p: [0.16, 1, 0.3, 1] },
+  { name: 'Anticipate', p: [0.68, -0.55, 0.27, 1.55] },
+  { name: 'Overshoot', p: [0.34, 1.56, 0.64, 1] },
+];
+
+const state = {
+  mode: 'bezier',
+  bez: [0.25, 0.1, 0.25, 1],
+  easing: 'easeOutCubic',
+  spring: { stiffness: 180, damping: 18, mass: 1, velocity: 0 },
+  duration: 1,
+  loop: true,
+};
+
+let playStart = null;
+let playing = false;
+let dragging = null;
+
+function currentCurve() {
+  if (state.mode === 'bezier') return cubicBezier(...state.bez);
+  if (state.mode === 'preset') return EASINGS.get(state.easing).fn;
+  const sol = springSolution(state.spring.stiffness, state.spring.damping, state.spring.mass, state.spring.velocity);
+  const dur = springDuration(sol).duration;
+  return (t) => sol.fn(t * dur);
+}
+
+function currentDuration() {
+  if (state.mode !== 'spring') return state.duration;
+  const sol = springSolution(state.spring.stiffness, state.spring.damping, state.spring.mass, state.spring.velocity);
+  return springDuration(sol).duration;
+}
+
+/* ---- plot ---- */
+
+const PAD = 52;
+
+function plotBox() {
+  return { x: PAD, y: PAD * 0.6, w: canvas.width - PAD * 1.4, h: canvas.height - PAD * 1.6 };
+}
+
+function valueRange(fn) {
+  const st = curveStats(fn);
+  const lo = Math.min(0, st.trough);
+  const hi = Math.max(1, st.peak);
+  const pad = (hi - lo) * 0.08;
+  return { lo: lo - pad, hi: hi + pad };
+}
+
+function toScreen(box, range, t, v) {
+  return {
+    x: box.x + t * box.w,
+    y: box.y + box.h - ((v - range.lo) / (range.hi - range.lo)) * box.h,
+  };
+}
+
+function drawPlot() {
+  const fn = currentCurve();
+  const box = plotBox();
+  const range = valueRange(fn);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#04070a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  /* the unit square, so overshoot is visible as "outside the box" */
+  const p0 = toScreen(box, range, 0, 0);
+  const p1 = toScreen(box, range, 1, 1);
+  ctx.strokeStyle = 'rgba(57,255,143,0.22)';
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(p0.x, p1.y, p1.x - p0.x, p0.y - p1.y);
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = 'rgba(57,255,143,0.10)';
+  for (let i = 0; i <= 10; i++) {
+    const x = box.x + (i / 10) * box.w;
+    ctx.beginPath();
+    ctx.moveTo(x, box.y);
+    ctx.lineTo(x, box.y + box.h);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = 'rgba(160,200,180,0.65)';
+  ctx.font = '11px Consolas, monospace';
+  ctx.fillText('0', p0.x - 10, p0.y + 16);
+  ctx.fillText('1', p1.x - 4, p0.y + 16);
+  ctx.fillText('1', p0.x - 18, p1.y + 4);
+  ctx.fillText('time', box.x + box.w / 2 - 12, box.y + box.h + 30);
+
+  /* the curve */
+  ctx.strokeStyle = '#39ff8f';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const N = 240;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const pt = toScreen(box, range, t, fn(t));
+    if (i === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.stroke();
+
+  if (state.mode === 'bezier') {
+    const [x1, y1, x2, y2] = state.bez;
+    const h1 = toScreen(box, range, x1, y1);
+    const h2 = toScreen(box, range, x2, y2);
+    ctx.strokeStyle = 'rgba(255,190,80,0.75)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(h1.x, h1.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(h2.x, h2.y); ctx.stroke();
+    for (const [h, label] of [[h1, 'P1'], [h2, 'P2']]) {
+      ctx.fillStyle = '#ffbe50';
+      ctx.beginPath(); ctx.arc(h.x, h.y, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#04070a';
+      ctx.font = 'bold 9px Consolas, monospace';
+      ctx.fillText(label, h.x - 7, h.y + 3);
+    }
+  }
+
+  /* the playhead */
+  if (playing || playStart !== null) {
+    const t = currentProgress();
+    const pt = toScreen(box, range, Math.min(1, t), fn(Math.min(1, t)));
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function pointerToCurve(ev) {
+  const rect = canvas.getBoundingClientRect();
+  const box = plotBox();
+  const range = valueRange(currentCurve());
+  const px = ((ev.clientX - rect.left) / rect.width) * canvas.width;
+  const py = ((ev.clientY - rect.top) / rect.height) * canvas.height;
+  return {
+    t: (px - box.x) / box.w,
+    v: range.lo + ((box.y + box.h - py) / box.h) * (range.hi - range.lo),
+    px,
+    py,
+  };
+}
+
+function handleHit(ev) {
+  if (state.mode !== 'bezier') return null;
+  const box = plotBox();
+  const range = valueRange(currentCurve());
+  const { px, py } = pointerToCurve(ev);
+  const h1 = toScreen(box, range, state.bez[0], state.bez[1]);
+  const h2 = toScreen(box, range, state.bez[2], state.bez[3]);
+  const d1 = Math.hypot(px - h1.x, py - h1.y);
+  const d2 = Math.hypot(px - h2.x, py - h2.y);
+  /* 22px, not 8 -- the drawn dot is the affordance, the target is bigger. */
+  if (d1 < 22 && d1 <= d2) return 0;
+  if (d2 < 22) return 1;
+  return null;
+}
+
+canvas.addEventListener('pointerdown', (ev) => {
+  const hit = handleHit(ev);
+  if (hit === null) return;
+  dragging = hit;
+  canvas.setPointerCapture(ev.pointerId);
+  ev.preventDefault();
+});
+
+canvas.addEventListener('pointermove', (ev) => {
+  if (dragging === null) {
+    canvas.style.cursor = handleHit(ev) === null ? 'default' : 'grab';
+    return;
+  }
+  const { t, v } = pointerToCurve(ev);
+  const i = dragging * 2;
+  state.bez[i] = Math.min(1, Math.max(0, t));
+  state.bez[i + 1] = Math.round(v * 1000) / 1000;
+  $('bez-preset').value = '0';
+  syncBezInputs();
+  refresh();
+});
+
+for (const type of ['pointerup', 'pointercancel']) {
+  canvas.addEventListener(type, () => { dragging = null; });
+}
+
+/* ---- preview ---- */
+
+function currentProgress() {
+  if (playStart === null) return 1;
+  const dur = currentDuration();
+  const elapsed = (performance.now() - playStart) / 1000;
+  return elapsed / dur;
+}
+
+function applyPreview(v) {
+  $('run-pos').style.transform = `translateX(${v * 100}%)`;
+  $('run-scale').style.transform = `scale(${0.35 + v * 0.65})`;
+  $('run-rot').style.transform = `rotate(${v * 360}deg)`;
+  $('run-fade').style.opacity = String(Math.min(1, Math.max(0, v)));
+}
+
+function tick() {
+  if (!playing) return;
+  const fn = currentCurve();
+  let t = currentProgress();
+  if (t >= 1) {
+    if (state.loop) {
+      playStart = performance.now() + 220; /* a beat between runs */
+      t = 0;
+    } else {
+      t = 1;
+      playing = false;
+      $('play-btn').textContent = 'Play';
+    }
+  }
+  applyPreview(fn(Math.min(1, Math.max(0, t))));
+  drawPlot();
+  if (playing) requestAnimationFrame(tick);
+}
+
+function play() {
+  playStart = performance.now();
+  if (!playing) {
+    playing = true;
+    $('play-btn').textContent = 'Stop';
+    requestAnimationFrame(tick);
+  }
+}
+
+$('play-btn').addEventListener('click', () => {
+  if (playing) {
+    playing = false;
+    $('play-btn').textContent = 'Play';
+  } else {
+    play();
+  }
+});
+
+$('loop-btn').addEventListener('click', () => {
+  state.loop = !state.loop;
+  $('loop-btn').textContent = `Loop: ${state.loop ? 'on' : 'off'}`;
+  $('loop-btn').setAttribute('aria-pressed', String(state.loop));
+});
+
+/* ---- readouts ---- */
+
+function refreshStats() {
+  const fn = currentCurve();
+  const st = curveStats(fn);
+  const dur = currentDuration();
+  if (state.mode === 'spring') {
+    const sol = springSolution(state.spring.stiffness, state.spring.damping, state.spring.mass, state.spring.velocity);
+    const d = springDuration(sol);
+    $('stat-dur').textContent = d.settled ? `${d.duration.toFixed(3)} s` : 'never settles';
+  } else {
+    $('stat-dur').textContent = `${dur.toFixed(3)} s`;
+  }
+  $('stat-peak').textContent = st.peak.toFixed(3);
+  const parts = [];
+  if (st.overshoot > 0.0005) parts.push(`+${(st.overshoot * 100).toFixed(1)}%`);
+  if (st.undershoot > 0.0005) parts.push(`-${(st.undershoot * 100).toFixed(1)}%`);
+  $('stat-over').textContent = parts.length ? parts.join(' / ') : 'none';
+  $('stat-speed').textContent = `${(st.maxSpeed / dur).toFixed(2)} /s`;
+}
+
+function exportName() {
+  if (state.mode === 'bezier') return 'customEase';
+  if (state.mode === 'preset') return state.easing;
+  return 'springEase';
+}
+
+function refreshCode() {
+  const lang = $('lang-select').value;
+  let code;
+  if (state.mode === 'bezier') {
+    code = lang === 'css'
+      ? `.thing {\n  transition: transform ${fmt(state.duration, 3)}s cubic-bezier(${state.bez.map((n) => fmt(n)).join(', ')});\n}`
+      : BEZIER_BODY[lang]('customEase', state.bez);
+  } else if (state.mode === 'preset') {
+    code = presetCode(lang, state.easing);
+  } else {
+    code = springCode(lang, 'springEase', state.spring, currentDuration());
+  }
+  $('code-out').textContent = code;
+}
+
+function refresh() {
+  drawPlot();
+  refreshStats();
+  refreshCode();
+  if (!playing) applyPreview(currentCurve()(1));
+}
+
+/* ---- wiring ---- */
+
+function syncBezInputs() {
+  const ids = ['x1', 'y1', 'x2', 'y2'];
+  ids.forEach((id, i) => { $(id).value = String(Math.round(state.bez[i] * 1000) / 1000); });
+}
+
+BEZ_PRESETS.forEach((p, i) => {
+  const opt = document.createElement('option');
+  opt.value = String(i);
+  opt.textContent = p.name;
+  $('bez-preset').appendChild(opt);
+});
+$('bez-preset').value = '1';
+$('bez-preset').addEventListener('change', () => {
+  const p = BEZ_PRESETS[Number($('bez-preset').value)];
+  if (!p || !p.p) return;
+  state.bez = p.p.slice();
+  syncBezInputs();
+  refresh();
+  play();
+});
+
+for (const id of ['x1', 'y1', 'x2', 'y2']) {
+  $(id).addEventListener('input', () => {
+    const idx = ['x1', 'y1', 'x2', 'y2'].indexOf(id);
+    let v = Number($(id).value);
+    if (!isFinite(v)) v = 0;
+    if (id === 'x1' || id === 'x2') v = Math.min(1, Math.max(0, v));
+    state.bez[idx] = v;
+    $('bez-preset').value = '0';
+    refresh();
+  });
+}
+
+const grouped = new Map();
+for (const [key, entry] of EASINGS) {
+  if (!grouped.has(entry.family)) grouped.set(entry.family, []);
+  grouped.get(entry.family).push(key);
+}
+for (const [family, keys] of grouped) {
+  const group = document.createElement('optgroup');
+  group.label = family;
+  for (const key of keys) {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = key;
+    group.appendChild(opt);
+  }
+  $('easing-select').appendChild(group);
+}
+$('easing-select').value = state.easing;
+
+const EASING_NOTES = {
+  Linear: 'Constant speed. Real objects never do this, which is why it reads as mechanical.',
+  Quad: 'The gentlest of the power curves. A safe default for UI.',
+  Cubic: 'The usual choice for things entering and leaving a screen.',
+  Quart: 'Steeper. Good when the motion should feel deliberate.',
+  Quint: 'Very steep — almost all of the motion happens in a quarter of the time.',
+  Sine: 'A quarter of a cosine. The softest start and stop there is.',
+  Expo: 'Nearly flat, then a rush. Excellent for something arriving from off-screen.',
+  Circ: 'A quarter circle. Sharper than it looks on the graph.',
+  Back: 'Pulls away before moving — anticipation, the oldest trick in animation.',
+  Elastic: 'A decaying sine. Reads as rubbery; use sparingly and never on a cursor.',
+  Bounce: 'Four parabolic arcs of decreasing height. Physical, and cheap.',
+};
+
+function refreshEasingNote() {
+  const entry = EASINGS.get(state.easing);
+  const note = EASING_NOTES[entry.family] || '';
+  $('easing-note').textContent = entry.bez
+    ? `${note} Approximated in CSS as cubic-bezier(${entry.bez.map((n) => fmt(n)).join(', ')}).`
+    : `${note} No cubic-bezier can express this one — the CSS export samples it instead.`;
+}
+
+$('easing-select').addEventListener('change', () => {
+  state.easing = $('easing-select').value;
+  refreshEasingNote();
+  refresh();
+  play();
+});
+
+const springInputs = [
+  ['stiff-slider', 'stiff-value', 'stiffness', (v) => v.toFixed(0)],
+  ['damp-slider', 'damp-value', 'damping', (v) => v.toFixed(1)],
+  ['mass-slider', 'mass-value', 'mass', (v) => v.toFixed(1)],
+  ['vel-slider', 'vel-value', 'velocity', (v) => v.toFixed(1)],
+];
+for (const [slider, label, key, format] of springInputs) {
+  $(slider).addEventListener('input', () => {
+    state.spring[key] = Number($(slider).value);
+    $(label).textContent = format(state.spring[key]);
+    refreshSpringNote();
+    refresh();
+  });
+}
+
+function refreshSpringNote() {
+  const sol = springSolution(state.spring.stiffness, state.spring.damping, state.spring.mass, state.spring.velocity);
+  const names = { under: 'underdamped — it will overshoot and wobble back', critical: 'critically damped — the fastest arrival with no overshoot', over: 'overdamped — sluggish, it crawls in' };
+  const d = springDuration(sol);
+  const tail = d.settled
+    ? ` Settles in ${d.duration.toFixed(3)}s.`
+    : ' With no damping it never settles — three periods shown.';
+  $('spring-note').textContent = `omega0 ${sol.w0.toFixed(2)} rad/s, damping ratio ${sol.zeta.toFixed(3)}: ${names[sol.regime]}.${tail}`;
+}
+
+$('dur-input').addEventListener('input', () => {
+  const v = Number($('dur-input').value);
+  if (isFinite(v) && v > 0) { state.duration = v; refresh(); }
+});
+
+$('mode-bar').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('.hud-tab');
+  if (!btn) return;
+  $('mode-bar').querySelectorAll('.hud-tab').forEach((b) => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.mode = btn.dataset.mode;
+  $('bezier-panel').classList.toggle('hidden', state.mode !== 'bezier');
+  $('preset-panel').classList.toggle('hidden', state.mode !== 'preset');
+  $('spring-panel').classList.toggle('hidden', state.mode !== 'spring');
+  $('plot-hint').textContent = state.mode === 'bezier'
+    ? 'Drag either handle. The dashed box is 0–1; the curve is allowed to leave it.'
+    : 'The dashed box is 0–1. Anything outside it is overshoot.';
+  $('dur-input').disabled = state.mode === 'spring';
+  refresh();
+  play();
+});
+
+$('lang-select').addEventListener('change', refreshCode);
+
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+async function copy(text, msg) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(msg);
+  } catch (err) {
+    toast('Clipboard blocked — select and copy');
+  }
+}
+
+$('copy-btn').addEventListener('click', () => copy($('code-out').textContent, 'Code copied'));
+$('table-btn').addEventListener('click', () => {
+  const fn = currentCurve();
+  const rows = sampleCurve(fn, 63).map((p) => p.v.toFixed(6)).join(', ');
+  copy(`[${rows}]`, '64 samples copied');
+});
+
+window.__easing = {
+  cubicBezier, bezierSolveS, bezierComponent, EASINGS, springSolution, springDuration,
+  sampleCurve, curveStats, cssLinear, presetCode,
+  setBezier(p) { state.bez = p.slice(); state.mode = 'bezier'; syncBezInputs(); refresh(); return sampleCurve(currentCurve(), 32); },
+  setMode(m) { $('mode-bar').querySelector(`[data-mode="${m}"]`).click(); },
+  setEasing(k) { state.easing = k; $('easing-select').value = k; refreshEasingNote(); refresh(); },
+  setSpring(s) { Object.assign(state.spring, s); refreshSpringNote(); refresh(); return currentDuration(); },
+  get curve() { return currentCurve(); },
+  get code() { return $('code-out').textContent; },
+  get stats() { return curveStats(currentCurve()); },
+};
+
+/* ---- boot ---- */
+syncBezInputs();
+refreshEasingNote();
+refreshSpringNote();
+refresh();
+play();
+</script>
+<!-- Slippy Deck: floating Slippy TV + jukebox player. Renders nothing unless admin.slippylabs.com/whoami confirms a signed-in account. -->
+<script defer src="https://slippylabs.com/deck/deck.js"></script>
+<!-- Slippy Labs sitewide privacy link. Self-contained on purpose: these sites
+     share no CSS, so it carries its own styles and inherits the page's text
+     colour instead of assuming a palette. position/z-index are load bearing --
+     the HUD theme's .starfield/.scanlines are fixed at z-index 0-1 and would
+     paint straight over an unpositioned footer.
+     The .page-wrap trim below is what keeps the bar on the first screen. -->
+<div class="sl-legal"><a href="https://slippylabs.com/privacy.html">Privacy</a></div>
+<style>
+.sl-legal{box-sizing:border-box;position:relative;z-index:3;height:64px;display:flex;align-items:center;justify-content:center;margin:0;padding:0 12px;font-family:"Consolas","SFMono-Regular",Menlo,Monaco,"Courier New",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.5}
+.sl-legal a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px}
+.sl-legal a:hover,.sl-legal a:focus-visible{text-decoration:underline;opacity:1}
+/* This page centres .page-wrap at min-height:100vh, which would push the bar a
+   whole screen below the fold. Give back exactly the bar height instead of
+   adding a scrollbar to a page that had none. */
+.page-wrap{min-height:calc(100vh - 64px)}
+</style>
+</body>
+</html>
